@@ -1,0 +1,4 @@
+flex -i -ostalk_lex.c stalk_lex
+bison -d -ostalk_par.tab.cpp stalk_par.y
+gcc -fpermissive -w -I./ -I./glib stalk_par.tab.cpp stalk_lex.c /usr/lib/libgc.a  -lreadline -ltermcap -lgtk-x11-2.0 -lgdk-x11-2.0 -lpthread
+

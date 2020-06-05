@@ -1,0 +1,165 @@
+%{
+#define svmprint printf //remember to change this too if you change the one in includes.h!!!
+
+
+#include "stalk_par.tab.cpp.h"
+
+char string_buf[80];
+char *string_buf_ptr;
+char ansiflag;
+%}
+
+%option caseless noyywrap
+
+%x str
+%x ansi
+
+DIGIT [0-9]
+HEXIT [0-9a-f]
+BIT   [0-1]
+SYMBOL [^a-z0-9 \n\t_":;'$.(){}[\]]+
+STUFF [^ \n\t".(){}[\]]
+WS [\n\t ]*
+ALOWS [\n\t ]+
+WORD [a-z_]+[a-z0-9_]*
+KEYWORD {WORD}":"
+KEYWORD2 {WORD}";"
+MULTI {KEYWORD}{KEYWORD2}+
+
+
+%%
+
+
+
+
+\"      string_buf_ptr = string_buf; BEGIN(str);
+
+<str>{
+
+<<EOF>>   svmprint("End of file encountered in string constant\n");BEGIN(INITIAL);yyterminate();
+\"        { /* saw closing quote - all done */
+
+                   BEGIN(INITIAL);
+                   *string_buf_ptr = '\0';
+
+                   return LITERAL_STRING;
+                   }
+
+\n 	/* Strings can span lines- but no \n is auto-inserted */
+
+
+\\[0-7]{1,3}       *string_buf_ptr++ = strtoul(yytext+1,0,8);
+
+\\x{HEXIT}+	   *string_buf_ptr++ = strtoul(yytext+2,0,16);
+
+
+\\n  *string_buf_ptr++ = '\n';
+\\t  *string_buf_ptr++ = '\t';
+\\r  *string_buf_ptr++ = '\r';
+\\b  *string_buf_ptr++ = '\b';
+\\f  *string_buf_ptr++ = '\f';
+\\v  *string_buf_ptr++ = '\v';
+\\a  *string_buf_ptr++ = '\a';
+
+\\# *string_buf_ptr++=27;*string_buf_ptr++='[';ansiflag=0;BEGIN(ansi);
+
+\\(.|\n)  *string_buf_ptr++ = yytext[1];
+
+[^\\\n\"]+        {
+                   char *yptr = yytext;
+
+                   while ( *yptr )
+                           *string_buf_ptr++ = *yptr++;
+                   }
+}
+
+<ansi>{
+
+# 		*string_buf_ptr++='m';BEGIN(str);
+f[0-7]          if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='3';*string_buf_ptr++=yytext[1];ansiflag=1;
+b[0-7]		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='4';*string_buf_ptr++=yytext[1];ansiflag=1;
+_		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='4';ansiflag=1;
+\+		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='1';ansiflag=1;
+r		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='7';ansiflag=1;
+i		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='8';ansiflag=1;
+n		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='0';ansiflag=1;
+l		if(ansiflag)*string_buf_ptr++=';';*string_buf_ptr++='5';ansiflag=1;
+\"    svmprint("Unterminated ANSI sequence\n");BEGIN(INITIAL);yyterminate();
+<<EOF>>         svmprint("Error in ANSI sequence\n");BEGIN(INITIAL);yyterminate();
+.		/* eat up rogue characters */
+
+}
+
+
+
+"B_"{BIT}+ {return LITERAL_BIN;}
+"H_"{HEXIT}+ {return LITERAL_HEX;}
+{WORD}"!" {return ARGHOLDER;}
+
+"'$"{STUFF}+ {return AWORD_Q_D;}
+"$"{STUFF}+ {return AWORD_D;}
+
+
+
+^-{DIGIT}+"."{DIGIT}+ {return LITERAL_FLOAT_NEG;}
+{ALOWS}-{DIGIT}+"."{DIGIT}+ {return LITERAL_FLOAT_NEG;}
+
+{DIGIT}+"."{DIGIT}+ {return LITERAL_FLOAT;}
+
+^-{DIGIT}+        {return LITERAL_DEC_NEG;}
+{ALOWS}-{DIGIT}+        {return LITERAL_DEC_NEG;}
+
+{DIGIT}+        {return LITERAL_DEC;}
+
+
+
+
+
+
+{KEYWORD2} {return KEYWORD2;}
+
+
+
+"'"{KEYWORD}{WS}"->" {return WORDSET_K_Q;}
+"'"({WORD}|{MULTI}|{SYMBOL}){WS}"->" {return WORDSET_Q;}
+{KEYWORD}{WS}"->" {return WORDSET_K;}
+({WORD}|{MULTI}|{SYMBOL}){WS}"->" {return WORDSET;}
+
+
+
+
+"'"{KEYWORD}{WS}"<-" {return WORDFROM_K_Q;}
+"'"({WORD}|{MULTI}|{SYMBOL}){WS}"<-" {return WORDFROM_Q;}
+{KEYWORD}{WS}"<-" {return WORDFROM_K;}
+({WORD}|{MULTI}|{SYMBOL}){WS}"<-" {return WORDFROM;}
+
+
+
+"'"{KEYWORD} {return KEYWORD_Q;}
+"'"{SYMBOL} {return SYMBOL_Q;}
+
+"'"({WORD}|{MULTI}) {return AWORD_Q;}
+
+({WORD}|{MULTI}) {return AWORD;}
+{KEYWORD} {return KEYWORD;}
+{SYMBOL} {return SYMBOL;}
+
+
+"." {return PERIOD;}
+"[" {return LSB;}
+"]" {return RSB;}
+"(" {return LB;}
+")" {return RB;}
+"{" {return LCB;}
+"}" {return RCB;}
+
+"\n"
+" "
+"\t"
+";".*
+
+
+
+
+%%
+

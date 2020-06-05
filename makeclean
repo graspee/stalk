@@ -1,0 +1,6 @@
+rm *~
+rm *.o
+rm stalk_lex.c
+rm stalk_par.tab.cpp
+rm stalk_par.tab.cpp.h
+

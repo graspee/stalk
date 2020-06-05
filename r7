@@ -1,0 +1,721 @@
+;// R7: The Standard Library for Stalk
+
+void->{
+    print->{"*void*" print}.
+}.
+
+void parent -> void.
+;// general methods for stalk. presumably inherited by most objects
+
+print->{("*" + __name + "*") print}.
+
+exit->{__stalk_exit}.
+exit:->{__stalk_exit_val}.
+
+is: ->{a! __stalk_equals: 'a}.
+isnot: ->{a! (__stalk_equals: 'a) not}.
+
+object->{
+        
+        isa:->{a! 'parent is: 'a}.
+        isnota:->{a! 'parent isnot: 'a}.
+        loop:to;foreach;->{
+			start! end! b!
+			c<-start.
+			;//s<-'self. THIS MESSES UP SOMETHING- local vars in caller
+			[c<('end+1)] while: ['self run: 'b with; c. c++1. ].
+		}.
+		loop:to;step;foreach;->{
+		}.
+}.
+
+; //integer methods TODO
+; //
+; // tostring
+; // towords
+; // char [the ascii char corresp to this number]
+; // 3 rand: 6 gives a number between 3 and 6 inclusive
+
+integer->{
+	parent->object.
+       to:->{b!
+		temp<-list new.
+		i<-1.
+		[i<(b+1)] while: [temp++i. i++1].
+		temp.
+	   }.
+	   to:do; ->{
+		end!blok!
+                c<-'self.
+                ['c<('end+1)] while: ['c  run: 'blok. c++1. ]
+		}.
+     to:step;do; ->{
+                end!step!blok!
+                c<-'self.
+                [c<('end+1)] while: [c run: 'blok. c++step. ]
+                }.
+
+    & ->{a! __integer_and: a}.
+    | ->{a! __integer_or: a}.
+    ^ ->{a! __integer_xor: a}.
+    not ->{__integer_not}.
+    && ->{a! __integer_and_and: a}.
+    || ->{a! __integer_or_or: a}.
+    ^^ ->{a! __integer_xor_xor: a}.
+	nots ->{__integer_not_not}.
+	<< ->{a! __shiftl: a}.
+	>> ->{a! __shiftr: a}.
+	<<<< ->{a! __shiftls: a}.
+	>>>> ->{a! __shiftrs: a}.
+    % -> {a! __mod: a}.
+	;do other bit operations!
+
+    + -> {a! __integer_add: a}.
+    - -> {a! __integer_minus: a}.
+    * -> {a! __integer_multiply: a}.
+    / -> {a! __integer_divide: a}.
+
+    ++ -> {a! __integer_plus_plus: a}.
+
+    -- -> {a! __integer_minus_minus: a}.
+    ** -> {a! __integer_multiply_multiply: a}.
+    // -> {a! __integer_divide_divide: a}.
+
+    < -> {a! __integer_lessthan: a}.
+    > -> {a! __integer_greaterthan: a}.
+    = -> {a! __integer_equals: a}.
+    /= -> {a! __integer_nequal: a}.
+    <= -> {a! __integer_lessthan_equal: a}.
+    >= -> {a! __integer_greaterthan_equal: a}.
+
+    set: -> {a! __setval: a}.
+    print -> {__integer_print}.
+    factorial->{
+        (self = 1) if: 1 else;[(self - 1) factorial * self]
+    }.
+    astime->{__integer_astime}.
+}.
+true->{
+    if:else;->{a! a}.
+    ifnot:else;->{a! b! b}.
+    if:->{a! a}.
+    nand:->{a! a not}.
+    and:->{a! a}.
+    xor:->{a! a not}.
+    imp:->{a! a}.
+	=->{a! a}.
+	print->{"*true*" print}.
+} __setval: 1.
+
+false->{
+    not->true.
+    if:else;->{a! b! b}.
+    ifnot:else;->{a! b! a}.
+    ifnot:->{a! a}.
+    nor:->{a! a not}.
+    or:->{a! a}.
+    xor:->{a! a}.
+    nand:->true.
+    imp:->true.
+	=->{a! a not}.
+	print->{"*false*" print}.
+} __setval: 9.
+
+
+;// The following lines are here because you can't
+;// use an object you haven't declared yet as an initializer.
+
+true not->false.
+true ifnot:->false.
+false if:->false.
+true nor:->false.
+true or:->true.
+false and:->false.
+
+
+
+boolean->{
+    parent->object.
+}.
+
+true parent->boolean.
+false parent->boolean.
+
+
+;//experimental stalk implementations of primitives. slower but cooler
+
+
+while:->{blok! self if: [blok. 'self while: 'blok]}.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+float->{
+	parent->object.
+         + -> {a! __float_add:a}.
+         - -> {a! __float_minus:a}.
+         * -> {a! __float_multiply:a}.
+         / -> {a! __float_divide:a}.
+         < -> {a! __float_lessthan:a}.
+         > -> {a! __float_greaterthan:a}.
+         = -> {a! __float_equals:a}.
+         /= -> {a! __float_nequal:a}.
+         <= -> {a! __float_lessthan_equal:a}.
+         >= -> {a! __float_greaterthan_equal:a}.
+         ++ -> {a! __float_plus_plus:a}.
+         -- -> {a! __float_minus_minus:a}.
+         ** -> {a! __float_multiply_multiply:a}.
+         // -> {a! __float_divide_divide:a}.
+	 set: -> {a! __setval: a}.
+	 print -> {__float_print}.
+}.
+
+
+dictionary->{
+	parent->object.
+	@->{ ; // TODO- don't return the bucket- if bucket empty or void then nil, else search list for key
+		key! 
+		templist <- data @ key hash.
+		(templist is: void) if: void
+			else; [
+				temppair<-templist test: [e!  e @ 1 = key].
+				(temppair is: void) if: void else; temppair @ 2
+				].
+		}.
+	at:put;->{a!b!
+		key <- a hash.
+		((data @ key) is: void) if: [
+			l <- list new.
+			pair <- array new: 2.
+			pair at: 1 put; a at: 2 put; b.
+			l ++ pair.
+			data at: key put; l.
+		]
+		else; [
+			;//TODO if you find the key in the list then replace it rather than add it
+			l <- data @ key.
+			pair <- array new: 2.
+			pair at: 1 put; a at: 2 put; b.
+			l ++ pair.
+		].
+		"true".
+	}.
+	new->{'self new: 241}.
+	new:->{a!
+		{
+			parent->dictionary.
+			buckets->a.
+			data->array new: a.
+
+		}.
+	}
+}.
+; //string methods TODO
+; // tonumber    auto int or float dep on point
+; // indexing with @
+; // some form of mid$
+; // tolist- breaks string up into words, discarding whitespace
+; // split arbitrary char
+; // trim,ltrim,rtrim
+; // foreach uses string, not asc
+
+string->{
+    parent -> object.
+
+    ;newptr: ->{a! __string_newptr: a}.
+    new:->{a! {parent->string} __setval: a}.
+    -- -> {__string_minus_minus}.
+    - -> {__string_minus}.
+    <= -> {__string_lessthan_equal}.
+    >= -> {__string_greaterthan_equal}.
+    < -> {__string_lessthan}.
+    > -> {__string_greaterthan}.
+    find: -> {__string_find}.
+
+	@@ -> {a! __getchar: ('self __getval + a - 1)}.
+	at:puta;->{a!b!
+		 __putchar: b at; ( __getval + a - 1)
+	}.
+
+
+	= ->{b!
+		oldstring<-'self.
+		
+		(length /= b length)
+			if: false
+			else; [
+				i<-1.
+				s<-true.
+				[(i<(length+1)) and: s] while:
+					[
+						s setf: (oldstring @@ i)	= (b @@ i).
+						i++1.
+					].
+				s.
+			].
+	}.
+
+	/= -> {a! ('self = a) not}.
+
+	foreachasc:->{b! 
+		
+		oldstring<-'self.
+		loop: 1 to; length  foreach;
+                        [ fe! 
+				
+						    run: 'b with; oldstring @@ fe.
+                                
+                        ].
+	}.
+	
+	hash->{'self hash: 241}.
+	hash:->{ts!
+
+		'self h <- 0.
+		'self g <- 0.
+		
+		 'self foreachasc: [char!
+						 h setf: ( h<<4)+char.
+						 g setf:  h&H_F0000000.
+						g/=0 if: [
+									h ^^ (g>>24).
+									h && g not.
+								].
+					].
+		h % ts.	
+	}.
+
+
+
+    apply: -> {b!
+                oldstring<-'self.
+                newstring<-string new: (__malloc: length + 1).
+                newstring length<-length.
+                loop: 1 to; length  foreach;
+                        [p! newstring at: p puta; ((oldstring @@ p) run:'b) ].
+
+                'newstring.
+    }.
+
+
+	
+    toupper -> {
+                'self apply: [&223].
+        
+    }.
+	selftoupper -> {
+               'self apply: [&223].
+        
+    }.
+    tolower -> {
+                'self apply: [|32].
+    }.
+    flipcase -> {
+                'self apply: [^32].
+    }.
+
+
+   ;// touppers -> {__string_touppers}.
+   ;// tolowers -> {__string_tolowers}.
+   ;// lefts: -> {__string_lefts}.
+   ;// rights: -> {__string_rights}.
+    left: -> {num!
+                newstring<-string new: (__malloc: num + 1).
+                newstring length <- num.
+                __memcopy: num from; __getval to; newstring __getval.
+
+                
+
+                'newstring.
+                }.
+
+    right: -> {
+                num!
+
+                newstring<-string new: (__malloc: num + 1).
+                newstring length <- num.
+                __memcopy: num from; (__getval + length - num)
+                                 to; newstring __getval.
+                'newstring.
+    }.
+    chopleft:->{
+               num!
+               'self right: ('self length-num).
+    }.
+    chopright:->{
+                 num!
+                 'self left: ('self length-num).
+   }.
+    ** -> {__string_multiply_multiply}.
+    * -> {__string_multiply}.
+    ++ -> {a! __string_plus_plus: a}.
+    + -> {a! __string_plus: a}.
+   
+    print -> {__string_print}.
+}.
+
+
+memblock->{
+           parent->object.
+	   new:->{x!
+                        {parent->memblock.
+                         size->x.
+                         location->__malloc: x.
+                         }.
+
+           }.
+          getstring:->{ x! string new: location + a}.
+
+           getint:->{x! integer new: location + a}.
+          getobj:->{a! __getobjfrom: location+a}.
+          putobj:at;->{a! b!  __putobj: a at; location+b}.
+}.
+
+
+array->{
+        parent->object.
+	new:->{a! new: a size; __intsize}.    ;so it's faster to call "new:x size;4" but not portable...
+        new:size; -> {n! s!
+                        {parent->array.
+                         cells->n.
+                         cellsize->s.
+                         mb->memblock new: n*s}
+                   }.
+        @->{a!
+                (a<1 or: a>cells) if: "Array index out of bounds."
+                else;  [mb getobj: (a-1)*cellsize]
+        }.
+        at:put;->{a! b! mb putobj: b at; (a-1)*cellsize. 'self}.
+        do:->{fe!
+                        s<-'self. ;why do we need to do this- we shouldn't have to
+                        loop: 1 to; cells foreach; [b!  ('s @ b) run: 'fe ].
+			}.
+        print->{"<<" print. do: [print. " " print.]. ">>" print.}.
+
+
+
+
+
+}.
+
+
+
+
+
+
+realcons->{
+	parent->object.
+   ; new->{{ parent->cons. car! cdr!}}.
+    ++->{arg! self setf: {parent->realcons. car->arg. cdr->self}}.
+    print->{car print.cdr print}.
+do:->{
+            blok!
+			car run: 'blok.
+            (cdr isnot: void) if: [cdr do: 'blok].
+            self.
+                        }.
+}.
+
+;cons->void.
+;cons parent->realcons.
+cons->{
+	{
+        parent->realcons.car!cdr!     ;//these are args really but we need them to be void
+        }
+}.
+;// cons needs dealing with so it's LISP-compliant
+
+
+list->{
+	parent->object.
+	new->{{parent->list.start->end->{data!next!}}}.
+	print->{i<-start.
+			"[" print.
+			[i isnot: end] while: 
+				[i data print. "," print.i setf: i next].
+			"]" print.
+			'self
+  }.
+  ++ ->{arg! end next<-{data!next!}.
+        end data<-arg. ; should arg be quoted?
+      end setf: end next.
+        self}.
+
+	do:->{blok!
+			i<-start.
+			[i isnot: end] while: [
+                           i data run: 'blok.
+                           i setf: i next
+                          ].
+          self
+	}.
+
+	test:->{ b! ;//block to run
+		satisfied<-false.
+		i<-start.
+		[(satisfied=false) and: (i isnot: end)] while: [
+				
+				(   run: 'b with; i data) if:
+					[satisfied setf: true]
+					else;
+					[i setf: i next].
+			].
+			satisfied if: [i data] else; void.
+	}.
+
+}.
+
+
+
+
+
+
+time->{
+    parent->object.
+    print->{hour print.":" print. min print. "::" print. sec print}.
+}.
+
+
+
+con->{
+    readline->{__console_readline}.
+    readline:->{__console_readline_prompt}.
+}.
+
+
+;// GUI STUFF
+
+signal->{
+    disconnect->{__signal_disconnect}.
+    disable->{__signal_disable}.
+    enable->{__signal_enable}.
+}.
+
+widget->{
+    parent->object.
+    sizex:sizey; -> {a!b! __gui_widget_sizex: a sizey;b}.
+    show->{__gui_widget_show}.
+    hide->{__gui_widget_hide}.
+    new->{
+        ;construct name of widget
+        temp<-"Gtk" + ((__name left: 1) toupper)
+            + ((__name chopleft: 1) tolower).
+
+        {parent->'self.} __setval: __gui_widget_new: temp.
+    }.
+	new:->{n!
+        {parent->'self.} __setval: __gui_widget_new: n.
+    }.
+    ifkeypressed:->{a! self keypressed<-__gui_signal: "key-press-event" dowith1arg; 'a}.
+
+   ;// disconnect_signal:->{__signal_disconnect}.
+
+}.
+
+ctree->{
+	 parent->widget.
+	new->{'self new: "GtkCTree"}.
+	add:->{a! __gui_ctree_insert_node: a}.
+	add:parent;sibling;->{a!p!s! __gui_ctree_insert_node: a parent; p sibling; s}.
+}.
+
+text->{
+        parent->widget.
+}.
+progress_bar->{
+    parent->widget.
+    ;new:->{a! __gui_progress_bar_new_val: a}.
+    update:->{a! __gui_progress_bar_update: a}.
+}.
+
+container->{
+    parent->widget.
+    add:->{a! __gui_container_add: a}.
+}.
+
+button->{
+    parent->container.
+    ifpressed:->{a! self pressed <- __gui_signal: "pressed" do;'a}.
+    ifreleased:->{a! self released <- __gui_signal: "released" do;'a}.
+    ifclicked:->{a! self clicked <- __gui_signal: "clicked" do;'a}.
+    ifleave:->{a! self leave <- __gui_signal: "leave" do;'a}.
+    ifenter:->{a! self enter <- __gui_signal: "enter" do;'a}.
+    press->{__signal_emit: "pressed"}.
+    release->{__signal_emit: "released"}.
+    click->{__signal_emit: "clicked"}.
+    leave->{__signal_emit: "leave"}.
+    enter->{__signal_emit: "enter"}.
+    ;new:->{a! __gui_button_new_label: a}.
+}.
+window->{
+    parent->container.
+    new->{(run: widget 'new) __gui_propset: "type" value; 0}.
+    }.
+
+window_toplevel->{
+    parent->window.
+    new->{window new}.
+}.
+window_dialog->{
+    parent->window.
+    new->{(window new) __gui_propset: "type" value; 1}.
+}.
+window_popup->{
+    parent->window.
+    new->{(window new) __gui_propset: "type" value; 2}.
+}.
+vbox->{
+    parent->container.
+	new->{'self new: "GtkVBox"}.
+}.
+
+keyenter->65293.
+
+guishell->{
+        parent->object.
+        mytext<-text new.
+		myvbox<-vbox new.
+		mytree<-ctree new.
+
+		mytree __gui_ctree_setexpanderstyle: 1.
+		mytree __gui_ctree_setlinestyle: 1.
+		mytree __gui_ctree_setindent: 100.
+
+		mywindow<-window_toplevel new. 
+		
+        myvbox add: mytree add: mytext.
+		
+		mywindow sizex: 800 sizey;600.
+        mywindow add: myvbox.
+		
+		myvbox show.
+		mytree show.
+
+		
+
+
+        mytext show.
+        mytext __gui_propset: "editable" value; 1.
+        mywindow show.
+
+        mytext ifkeypressed: [key!  (key code = keyenter) if: [(mytext __gui_text_chars) print].].
+		
+		f<-mytree add: "hello".
+		g<-mytree add: "world" parent; f sibling; 0.
+		mytree add: "from" parent; g sibling; 0.
+		mytree add: "stalk".
+
+        enter_gui_loop.
+        }.
+
+myguiapp->{
+    window<-window_toplevel new.
+    vbox<-vbox new.
+    button1<-button new: "+5".
+    button2<-button new: "-5".
+    button3<-button new: "Exit".
+    button4<-button new: "disable button 1".
+    button5<-button new: "enable button 1".
+    button6<-button new: "push button 1".
+    mybar<-progress_bar new.
+    progress<-0.0.
+    window sizex: 200 sizey;200.
+
+    window add: vbox.
+    vbox add: button1 add: button2 add: button3 add: button4 add: button5 add: button6 add: mybar.
+
+    mybar show.
+    button1 show.
+    button2 show.
+    button3 show.
+    button4 show.
+    button5 show.
+    button6 show.
+    vbox show.
+    window show.
+
+    button1 ifclicked: [mybar update: progress++0.05].
+    button2 ifclicked: [mybar update: progress--0.05].
+    button3 ifclicked: [exit_gui_loop].
+    button4 ifclicked: [button1 clicked disable].
+    button5 ifclicked: [button1 clicked enable].
+    button6 ifclicked: [button1 click].
+    enter_gui_loop.
+    progress.
+
+}.
+
+
+file->{
+        new:->{
+               a!
+               {
+                parent->file.
+                filename->a.;__filename_from_string: a.
+                }.
+        }.
+        ;//methods which have to look at the file for info
+        length->{ __file_get_length: filename}.
+
+        getlock:->{mode!
+                   (lock=0) if:
+                        [lock setf:__file_lock: filename mode; mode.].
+                   (lock=0) if:
+                        [("Couldn't get a lock on file: '" + filename + "'.") print.].
+                   lock/=0.
+                   }.
+        droplock->{__file_unlock: 'self lock}.
+
+        lock->0. ;//slot to hold file*     
+
+        tostring->{
+                 ;//do we have a lock on this file, or can we get one?
+                
+                 (getlock: "r") if:
+
+                   [
+                        len<- 'self length.
+                        place<-__malloc: len +1.
+                        newstring<-string new: place.
+                        newstring length<- len.
+                        __file_raw_read: lock to; place length; len.
+                        'self droplock.
+                        newstring.
+                 ].
+        }.
+
+
+
+}.
+
+person->{
+    new:age;friend;->{n!a!f!
+            {parent->person.
+                age->a.
+            name->n.
+            friend->f}.
+            }.
+    perform:->{x! run: 'x}.
+    funmethod->{
+        ("My name is "+name+".\n") print.
+        "My best friend is:\n" print.
+            friend perform: [name print].
+                friend perform: [age print].
+               }.
+    }.
+
+
+
+
+

@@ -1,0 +1,235 @@
+#ifndef svmincluded_gc_hpp
+
+
+	#define svmincluded_gc_hpp
+
+	#include <memory.h>
+	#include <malloc.h>
+	#include <stddef.h>
+	#include <stdio.h>
+	#include <iostream.h>
+
+
+template <class T> class gc;
+
+/************************************
+*									*
+*      The GC Class					*
+*									*
+************************************/
+template <class T> class innergc : public T {
+protected:
+		static innergc<T>* freelist;
+	union {
+		unsigned int refcount;
+		innergc<T>* nextfree;
+	};
+	
+#ifdef svm_tracing
+		static size_t n_totalallocations;
+		static size_t n_totalgrabsfromheap;
+		static size_t n_totalfreed;
+		
+		static size_t n_totalnowexist;
+		static size_t n_totalnowspare;
+#endif
+
+
+
+public:
+
+#ifdef svm_tracing		
+	static void gcstats(void){
+		printf("EXIST: %d HEAP: %d ALLOCS: %d HEAPGRABS: %d FREES: %d \n",n_totalnowexist,n_totalnowspare,n_totalallocations,n_totalgrabsfromheap,n_totalfreed);
+	}
+#endif	
+
+	void dec(void){
+		if(this!=0){//don't try to dec if not exist
+ 			if(refcount==1){//TURN OFF GC was refcount==1
+				refcount=0;
+				dec_childs();
+			
+				//recycle it
+				//cout << " >free \n";
+				this->nextfree=freelist;
+				freelist=this;
+
+#ifdef svm_tracing
+				n_totalnowexist--;
+				n_totalnowspare++;
+				
+				n_totalfreed++;
+#endif
+			}
+			else {
+				
+				if(refcount!=0)--refcount;
+				//cout << "-("<<refcount<<")";
+			}	
+		}
+	}
+
+	static innergc<T>* neo(void){
+		innergc<T>* temp;
+	  
+	  if(freelist==0){
+			//cout << " <new \n";
+			temp=(innergc<T>*)calloc(1,sizeof(innergc<T>));
+			temp->refcount=1;
+			temp->init();
+            
+#ifdef svm_tracing
+				n_totalnowexist++;
+				
+				n_totalallocations++;
+#endif
+			
+			return temp;
+		}
+		else{
+			//cout << " <heap \n";
+			temp=freelist;
+			freelist=freelist->nextfree;
+			memset(temp,0,sizeof(innergc<T>));		
+			temp->refcount=1;
+			temp->init();
+			
+			
+#ifdef svm_tracing
+				n_totalnowexist++;
+				n_totalnowspare--;
+
+				n_totalgrabsfromheap++;
+#endif
+			
+			
+			return temp;
+		}
+
+	}//x=this
+	
+  
+	~innergc(){
+		//cout << "innergc destroy!\n";
+	}
+ 
+//	innergc(void){
+//	cout << "innergc cons void\n";
+//	}
+//	innergc(T&){
+//		cout << "innergc cons ref\n";
+//	}
+//
+//	innergc(T*){
+//		cout "innergc cons ptr\n";
+//	}
+
+	friend class gc<T>;
+};
+
+
+
+template<class T> innergc<T>* innergc<T>::freelist=0;
+
+#ifdef svm_tracing		
+		template<class T> size_t innergc<T>:: n_totalallocations=0;
+		template<class T> size_t innergc<T>:: n_totalfreed=0;
+		template<class T> size_t innergc<T>:: n_totalgrabsfromheap=0;
+		template<class T> size_t innergc<T>:: n_totalnowexist=0;
+		template<class T> size_t innergc<T>:: n_totalnowspare=0;
+#endif
+/************************************
+*									*
+*      The Wrapper Class			*
+* pnly called "GC" for clarity      *
+*									*
+************************************/
+template <class T> class gc
+{
+	public:
+
+		//the embedded actual object of desire
+		innergc<T>* obj;
+		//smart pointer
+		innergc<T>* operator->(void){return obj;}
+		
+		static void gcstats(void){innergc<T>::gcstats();}
+	
+		
+		bool notnil(gc<T>& x){return obj!=0;}
+		bool nil(gc<T>& x){return obj==0;}
+		//equality test
+		bool operator!=(gc<T>&arg){
+			return obj!=arg.obj;
+		}
+		bool operator==(gc<T>&arg){
+			return obj==arg.obj;
+		}
+		bool operator==(size_t arg){
+			return (size_t)obj==arg;
+		}
+		bool operator!=(size_t arg){
+                    return (size_t)obj!=arg;
+		}
+		//dodgy pass-through operators...
+		gc<T>& operator<<(char* arg){
+			obj->additem(arg);
+			return *this;
+		}
+		//assignment
+		gc<T>& operator=(gc<T>& arg){
+			if(arg==0){
+				if(obj!=0){obj->dec();}
+				obj=0;//semi-dodgy
+				return *this;
+			}
+  			arg.obj->refcount++; //one more ref to rhs (do first incase self assgn)
+			//cout<<"+["<<arg.obj->refcount<<"]";
+			obj->dec(); //one less ref to lhs
+			obj=arg.obj; //a=b
+
+                        return *this; //for chains
+		}
+		gc<T>& operator=(gc<T>* arg){
+			if(arg==0){
+				if(obj!=0){obj->dec();}
+				obj=0;//semi-dodgy
+				return *this;
+			}
+			if (arg->obj!=0){arg->obj->refcount++;} //one more ref to rhs (do first incase self assgn)
+				//cout<<"+("<<arg->obj->refcount<<")";
+            if(obj!=0){obj->dec();} //one less ref to lhs   
+			obj=arg->obj; //a=b
+            return *this; //for chains
+        }
+		
+	
+		//"new"
+		static gc<T>* create(){
+			gc<T>* temp=new gc<T>;	
+			temp->obj=innergc<T>::neo(); //temp, not temp->obj=!!!
+			return temp;
+		}
+		//	obj->dec(); //if something in there, one less of it
+		//	obj=(innergc<T>*)new innergc<T>;
+		//	return *this;
+		//}
+		//creation
+		
+		gc():obj(0){
+			//cout<<"CONS";
+		}
+		gc(gc<T>& arg):obj(0){obj=arg.obj;} //will it call operator= ?
+		gc(void* arg):obj(0){
+			obj=((gc<T>*)(arg))->obj;
+		} //will it call operator= ?
+		//destruction
+		~gc(){obj->dec();}
+		
+};
+
+
+	
+
+#endif
